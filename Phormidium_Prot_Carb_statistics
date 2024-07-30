@@ -1,0 +1,203 @@
+#following is a R script for the statistical analysis of physiological  parameters.
+# Combine carbohydrate and protein data into a single data frame
+combined_data <- data.frame(
+  treatment = rep(c('Control', 'T1', 'T2', 'T3', 'T4'), each = 12),
+  time = rep(c(10, 20, 30, 40), times = 15),
+  replicate = rep(1:3, times = 20),
+  carbohydrates = c(
+    15.883669, 18.568233, 15.883669, 52.796421, 54.138702, 55.928412, 76.286353, 72.483221, 75.391499, 53.914989, 50.111857, 53.020134,
+    6.935123, 5.816555, 5.816555, 26.398210, 25.950783, 25.727069, 49.664430, 55.704698, 52.125280, 27.293065, 33.333333, 29.753915,
+    8.053691, 7.829978, 6.487696, 12.527964, 13.422819, 12.304251, 29.530201, 25.055928, 29.530201, 16.107383, 16.107383, 16.554810,
+    3.131991, 2.237136, 2.908277, 4.921700, 6.040268, 6.040268, 16.107383, 17.225951, 16.554810, 11.633110, 12.751678, 12.080537,
+    2.237136, 2.684564, 1.342282, 4.697987, 5.145414, 4.250559, 7.829978, 7.829978, 3.355705, 5.592841, 5.592841, 3.355705
+  ),
+  protein = c(
+    7.052632, 6.736842, 6.368421, 4, 3.894737, 4.631579, 4.052632, 4.052632, 3, 3.842105, 3.473684, 3.684211,
+    4.157895, 3.105263, 2.894737, 2.736842, 2.421053, 2.315789, 2.578947, 2.421053, 2.421053, 2.263158, 2.105263, 2.157895,
+    3.263158, 3.315789, 2.842105, 2.421053, 2, 1.947368, 1.947368, 1.842105, 1.736842, 1.684211, 1.578947, 1.421053,
+    3.105263, 3.089474, 3.052632, 2.315789, 2.210526, 1.789474, 1.789474, 1.894737, 2.315789, 1.263158, 1.473684, 1.526316,
+    3.105263, 2.947368, 3.473684, 1.210526, 1.157895, 1.210526, 1.157895, 1.157895, 1.052632, 0.736842, 0.631579, 0.684211
+  )
+)
+
+# To Reshape the data
+long_combined_data <- gather(combined_data, key = "variable", value = "value", -treatment, -time, -replicate)
+# Load necessary libraries
+install.packages("dplyr")
+install.packages("PMCMRplus")
+library(dplyr)
+library(PMCMRplus)
+
+# To Separate carbohydrates and protein data
+carb_data <- long_combined_data %>% filter(variable == "carbohydrates")
+prot_data <- long_combined_data %>% filter(variable == "protein")
+
+# Performing Kruskal-Wallis Test for Carbohydrates
+kruskal_carb <- kruskal.test(value ~ treatment, data = carb_data)
+print(kruskal_carb)
+
+# Performing Kruskal-Wallis Test for Protein
+kruskal_prot <- kruskal.test(value ~ treatment, data = prot_data)
+print(kruskal_prot)
+
+# Install and load the necessary package
+install.packages("FSA")
+library(FSA)
+# Dunn's Post-Hoc Test for Carbohydrates (if Kruskal-Wallis is significant)
+dunn_carb <- dunnTest(value ~ treatment, data = carb_data, method = "bonferroni")
+print(dunn_carb)
+
+# To perform Dunn's Post-Hoc Test for Protein (if Kruskal-Wallis is significant)
+dunn_prot <- dunnTest(value ~ treatment, data = prot_data, method = "bonferroni")
+print(dunn_prot)
+# Load necessary library
+install.packages("tidyverse")  # tidyverse includes tidyr and dplyr
+library(tidyverse)
+
+# To Prepare data for Friedman test (needs to be in wide format)
+carb_wide <- spread(carb_data, key = time, value = value)
+prot_wide <- spread(prot_data, key = time, value = value)
+print(carb_wide)
+Print(prot_wide)
+
+# Friedman Test for Carbohydrates
+friedman_carb <- friedman.test(as.matrix(carb_wide[, 4:7]))
+print(friedman_carb)
+
+# Friedman Test for Protein
+friedman_prot <- friedman.test(as.matrix(prot_wide[, 4:7]))
+print(friedman_prot)
+
+# Install and load ggplot2
+install.packages("ggplot2")
+library(ggplot2)
+
+# Carbohydrates Boxplot
+ggplot(carb_data, aes(x = as.factor(time), y = value, fill = treatment)) +
+  geom_boxplot() +
+  labs(title = "Carbohydrates over Time", x = "Time (days)", y = "Carbohydrates") +
+  theme_minimal()
+
+# Protein Boxplot
+ggplot(prot_data, aes(x = as.factor(time), y = value, fill = treatment)) +
+  geom_boxplot() +
+  labs(title = "Protein over Time", x = "Time (days)", y = "Protein") +
+  theme_minimal()
+# the results show that protein and carbohydrate data over time has shown no significance
+# we will now try difference between treatments to see if we get a p value less than 0.05
+install.packages("FSA")  # For Dunn's test
+library(tidyverse)
+library(FSA)
+# Example data
+# Assuming carb_data and prot_data have columns: treatment, time, replicate, value
+
+# Convert treatment to factor
+carb_data$treatment <- as.factor(carb_data$treatment)
+prot_data$treatment <- as.factor(prot_data$treatment)
+
+# Splitting data by time point
+carb_split <- split(carb_data, carb_data$time)
+prot_split <- split(prot_data, prot_data$time)
+
+# Function to perform Kruskal-Wallis and Dunn's tests
+perform_tests <- function(data_split) {
+  results <- list()
+  
+  for (time in names(data_split)) {
+    data <- data_split[[time]]
+    
+    # Kruskal-Wallis Test
+    kruskal_res <- kruskal.test(value ~ treatment, data = data)
+    
+    # Perform Dunn's Test if Kruskal-Wallis is significant
+    if (kruskal_res$p.value < 0.05) {
+      dunn_res <- dunnTest(value ~ treatment, data = data, method = "bonferroni")
+      results[[time]] <- list(kruskal = kruskal_res, dunn = dunn_res)
+    } else {
+      results[[time]] <- list(kruskal = kruskal_res, dunn = NULL)
+    }
+  }
+  
+  return(results)
+}
+
+#  tests for carbohydrates and protein data
+carb_results <- perform_tests(carb_split)
+prot_results <- perform_tests(prot_split)
+
+# Function to print results
+print_results <- function(results) {
+  for (time in names(results)) {
+    cat("\nTime Point:", time, "\n")
+    cat("Kruskal-Wallis Test:\n")
+    print(results[[time]]$kruskal)
+    
+    if (!is.null(results[[time]]$dunn)) {
+      cat("Dunn's Post-Hoc Test:\n")
+      print(results[[time]]$dunn)
+    }
+  }
+}
+
+# Print results for carbohydrates
+print_results(carb_results)
+
+# Print results for protein
+print_results(prot_results)
+
+## Visualisation by boxplot
+
+# Load required packages
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Load necessary libraries
+library(ggplot2)
+library(tidyr)
+
+# Carbohydrate data
+carb_data <- data.frame(
+  treatment = rep(c('Control', 'T1', 'T2', 'T3', 'T4'), each = 3),
+  replicate = rep(1:3, times = 5),
+  `10 days` = c(15.88, 18.57, 15.88, 6.94, 5.82, 5.82, 8.05, 7.83, 6.49, 3.13, 2.24, 2.91, 2.24, 2.68, 1.34),
+  `20 days` = c(52.80, 54.14, 55.93, 26.40, 25.95, 25.73, 12.53, 13.42, 12.30, 4.92, 6.04, 6.04, 4.70, 5.15, 4.25),
+  `30 days` = c(76.29, 72.48, 75.39, 49.66, 55.70, 52.13, 29.53, 25.06, 29.53, 16.11, 17.23, 16.55, 7.83, 7.83, 3.36),
+  `40 days` = c(53.91, 50.11, 53.02, 27.29, 33.33, 29.75, 16.11, 16.11, 16.55, 11.63, 12.75, 12.08, 5.59, 5.59, 3.36)
+)
+
+# Protein data
+prot_data <- data.frame(
+  treatment = rep(c('Control', 'T1', 'T2', 'T3', 'T4'), each = 3),
+  replicate = rep(1:3, times = 5),
+  `10 days` = c(7.05, 6.74, 6.37, 4.16, 3.11, 2.89, 3.26, 3.32, 2.84, 3.11, 3.09, 3.05, 3.11, 2.95, 3.47),
+  `20 days` = c(4.00, 3.89, 4.63, 2.74, 2.42, 2.32, 2.42, 2.00, 1.95, 2.32, 2.21, 1.79, 1.21, 1.16, 1.21),
+  `30 days` = c(4.05, 4.05, 3.00, 2.58, 2.42, 2.42, 1.95, 1.84, 1.74, 1.79, 1.89, 2.32, 1.16, 1.16, 1.05),
+  `40 days` = c(3.84, 3.47, 3.68, 2.26, 2.11, 2.16, 1.68, 1.58, 1.42, 1.26, 1.47, 1.53, 0.74, 0.63, 0.68)
+)
+
+# To Convert to long format
+carb_long <- gather(carb_data, key = "time", value = "value", -treatment, -replicate)
+prot_long <- gather(prot_data, key = "time", value = "value", -treatment, -replicate)
+
+# To Plot for carbohydrates
+carb_plot <- ggplot(carb_long, aes(x = treatment, y = value, fill = time)) +
+  geom_boxplot() +
+  labs(title = "Carbohydrate Content Across Treatments and Time Points", x = "Treatment", y = "Carbohydrate Content") +
+  theme_minimal()
+
+# To Save carbohydrate plot
+ggsave("/mnt/data/carbohydrate_plot.png", carb_plot)
+
+# To Plot for proteins
+prot_plot <- ggplot(prot_long, aes(x = treatment, y = value, fill = time)) +
+  geom_boxplot() +
+  labs(title = "Protein Content Across Treatments and Time Points", x = "Treatment", y = "Protein Content") +
+  theme_minimal()
+
+# To Save protein plot
+ggsave("/mnt/data/protein_plot.png", prot_plot)
+
+# Print plots to display in R
+print(carb_plot)
+print(prot_plot)
